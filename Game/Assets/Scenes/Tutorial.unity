@@ -717,7 +717,7 @@ MonoBehaviour:
   directionEulerOffset: {x: 0, y: 0, z: 0}
   drawRayInPlay: 1
   drawRayInEditor: 1
-  rayColor: {r: 0.2941177, g: 0, b: 0.509804, a: 1}
+  rayColor: {r: 0.50980395, g: 0, b: 0, a: 1}
   showExtraDebug: 0
 --- !u!1 &1294642384
 GameObject:
