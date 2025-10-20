@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 /// <summary>
 /// Cámara sencilla para tutorial: mantiene una altura fija (Y) y sigue al jugador lateralmente (X/Z).
@@ -19,6 +20,10 @@ public class TutorialCamera : MonoBehaviour
     [Header("Movimiento")]
     [Tooltip("Offset aplicado a la posición del target (X,Z). Y del offset se ignora, la altura se controla por fixedHeight.")]
     public Vector3 offset = Vector3.zero;
+    
+    [Header("Control del cursor")]
+    [Tooltip("Si está activado, el cursor se bloqueará al iniciar")]
+    public bool lockCursorOnStart = true;
     [Tooltip("Velocidad de suavizado. Valores altos hacen que la cámara siga más rápido.")]
     public float smoothSpeed = 8f;
     [Tooltip("Seguir en X (horizontal)")]
@@ -55,9 +60,59 @@ public class TutorialCamera : MonoBehaviour
         {
             RecalculateBounds();
         }
+        
+        // Bloquear el cursor si está configurado
+        if (lockCursorOnStart)
+        {
+            LockCursor();
+        }
+    }
+
+    void LockCursor()
+    {
+        Cursor.lockState = CursorLockMode.Locked;
+        Cursor.visible = false;
+    }
+
+    void UnlockCursor()
+    {
+        Cursor.lockState = CursorLockMode.None;
+        Cursor.visible = true;
     }
 
     // Usar LateUpdate para seguir al objetivo después de que éste se haya movido en Update
+    void OnEnable()
+    {
+        // Suscribirse al evento de la tecla Escape
+        var playerInput = GetComponent<PlayerInput>();
+        if (playerInput != null)
+        {
+            playerInput.actions["Cancel"].performed += OnCancelAction;
+        }
+    }
+
+    void OnDisable()
+    {
+        // Desuscribirse del evento
+        var playerInput = GetComponent<PlayerInput>();
+        if (playerInput != null)
+        {
+            playerInput.actions["Cancel"].performed -= OnCancelAction;
+        }
+    }
+
+    void OnCancelAction(InputAction.CallbackContext context)
+    {
+        if (Cursor.lockState == CursorLockMode.Locked)
+        {
+            UnlockCursor();
+        }
+        else
+        {
+            LockCursor();
+        }
+    }
+
     void LateUpdate()
     {
         if (target == null) return;

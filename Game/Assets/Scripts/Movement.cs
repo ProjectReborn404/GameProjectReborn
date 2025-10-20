@@ -13,7 +13,10 @@ public class Movement : MonoBehaviour
     public float acceleration = 10f;
 
     [Header("Salto y gravedad")]
-    public float jumpHeight = 1.6f;
+    public float jumpForce = 7f;
+    public float playerMass = 1f;
+    public float lowJumpMultiplier = 2.5f;
+    public float fallMultiplier = 2f;
     public float gravity = -9.81f;
     public float groundedGravity = -2f;
 
@@ -48,6 +51,7 @@ public class Movement : MonoBehaviour
     private Vector3 velocity;
     private float currentSpeed;
     private float verticalVelocity;
+    private bool jumpButtonHeld = false;
 
     // Entradas
     private float inputX;
@@ -93,10 +97,10 @@ public class Movement : MonoBehaviour
         // DEBUG: tecla para desbloquear en tiempo de ejecución (quita cuando lo implementes en tu progresión)
         // if (Input.GetKeyDown(KeyCode.K)) UnlockDoubleJump();
 
-        HandleMovement();
-        HandleGravityAndJump();
+    HandleMovement();
+    HandleGravityAndJump();
 
-        cc.Move(velocity * Time.deltaTime);
+    cc.Move(velocity * Time.deltaTime);
     }
 
     void HandleMovement()
@@ -106,7 +110,8 @@ public class Movement : MonoBehaviour
         inputX = 0f;
         inputZ = 0f;
         inputSprint = false;
-        inputJumpPressed = false;
+    inputJumpPressed = false;
+    jumpButtonHeld = false;
 
         if (Keyboard.current != null)
         {
@@ -118,6 +123,7 @@ public class Movement : MonoBehaviour
 
             inputSprint |= (Keyboard.current.leftShiftKey.isPressed || Keyboard.current.rightShiftKey.isPressed);
             inputJumpPressed |= Keyboard.current.spaceKey.wasPressedThisFrame;
+            jumpButtonHeld = Keyboard.current.spaceKey.isPressed;
         }
 
         if (Gamepad.current != null)
@@ -127,12 +133,14 @@ public class Movement : MonoBehaviour
             inputZ += stick.y;
             inputSprint |= Gamepad.current.leftShoulder.isPressed;
             inputJumpPressed |= Gamepad.current.buttonSouth.wasPressedThisFrame;
+            jumpButtonHeld = Gamepad.current.buttonSouth.isPressed;
         }
 #else
-        inputX = Input.GetAxisRaw("Horizontal");
-        inputZ = Input.GetAxisRaw("Vertical");
-        inputSprint = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
-        inputJumpPressed = Input.GetButtonDown("Jump");
+    inputX = Input.GetAxisRaw("Horizontal");
+    inputZ = Input.GetAxisRaw("Vertical");
+    inputSprint = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
+    inputJumpPressed = Input.GetButtonDown("Jump");
+    jumpButtonHeld = Input.GetButton("Jump");
 #endif
 
         Vector3 inputDir = new Vector3(inputX, 0f, inputZ);
@@ -151,9 +159,25 @@ public class Movement : MonoBehaviour
         }
 
         float targetSpeed = inputSprint ? sprintSpeed : walkSpeed;
-        currentSpeed = Mathf.MoveTowards(currentSpeed, targetSpeed, acceleration * Time.deltaTime);
 
-        Vector3 horizontalVelocity = worldDir * currentSpeed;
+        // Si no hay input de movimiento, desacelera a walkSpeed
+        if (inputDir.magnitude < 0.1f)
+        {
+            targetSpeed = walkSpeed;
+        }
+
+        // Aceleración progresiva solo si hay input de movimiento
+        if (inputDir.magnitude > 0.1f)
+        {
+            currentSpeed = Mathf.MoveTowards(currentSpeed, targetSpeed, acceleration * Time.deltaTime);
+        }
+        else
+        {
+            // Si no se mueve, vuelve a walkSpeed suavemente
+            currentSpeed = Mathf.MoveTowards(currentSpeed, walkSpeed, acceleration * Time.deltaTime);
+        }
+
+        Vector3 horizontalVelocity = worldDir * currentSpeed * inputDir.magnitude;
         velocity.x = horizontalVelocity.x;
         velocity.z = horizontalVelocity.z;
 
@@ -177,14 +201,12 @@ public class Movement : MonoBehaviour
         {
             // resetear contadores de salto al tocar suelo
             jumpsPerformed = 0;
-
             if (verticalVelocity < 0f)
                 verticalVelocity = groundedGravity;
         }
 
         // Comprobar input (si usas InputSystem con InputActionReference, adapta)
 #if ENABLE_INPUT_SYSTEM
-        // si usas jumpAction, setea inputJumpPressed mediante su callback
         if (jumpPressedFromAction)
         {
             inputJumpPressed = true;
@@ -195,27 +217,35 @@ public class Movement : MonoBehaviour
         // Si se presionó salto y tenemos saltos disponibles
         if (inputJumpPressed)
         {
-            // Si estamos en suelo siempre podemos saltar
             if (isGrounded)
             {
-                verticalVelocity = Mathf.Sqrt(Mathf.Abs(gravity) * 2f * jumpHeight);
+                // Aplica fuerza de salto basada en masa
+                verticalVelocity = (jumpForce / playerMass);
                 jumpsPerformed = 1;
             }
             else
             {
-                // Estamos en aire: permitimos otro salto solo si maxJumps > jumpsPerformed
                 if (jumpsPerformed < maxJumps)
                 {
-                    verticalVelocity = Mathf.Sqrt(Mathf.Abs(gravity) * 2f * jumpHeight);
+                    verticalVelocity = (jumpForce / playerMass);
                     jumpsPerformed++;
                     PlayDoubleJumpVFX();
                 }
             }
         }
 
-        // gravedad aplicable siempre si no estamos con groundedGravity
+        // Si el jugador está subiendo y suelta el salto, aplica más gravedad para salto corto
         if (!isGrounded)
         {
+            if (verticalVelocity > 0 && !jumpButtonHeld)
+            {
+                verticalVelocity += gravity * (lowJumpMultiplier - 1f) * Time.deltaTime;
+            }
+            // Si está cayendo, aplica más gravedad para caída rápida
+            else if (verticalVelocity < 0)
+            {
+                verticalVelocity += gravity * (fallMultiplier - 1f) * Time.deltaTime;
+            }
             verticalVelocity += gravity * Time.deltaTime;
         }
 

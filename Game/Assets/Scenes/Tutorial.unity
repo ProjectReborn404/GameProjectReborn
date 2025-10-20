@@ -873,6 +873,8 @@ MonoBehaviour:
   fixedHeight: 5
   useInitialHeight: 1
   offset: {x: 15, y: 0, z: 0}
+  lockCursorOnStart: 1
+  toggleCursorKey: 27
   smoothSpeed: 8
   followX: 1
   followZ: 1
@@ -1035,13 +1037,13 @@ PrefabInstance:
 SceneRoots:
   m_ObjectHideFlags: 0
   m_Roots:
+  - {fileID: 1294642387}
   - {fileID: 170781863}
   - {fileID: 1480966407}
   - {fileID: 554833770}
   - {fileID: 3685483572152654870}
   - {fileID: 313280540}
   - {fileID: 157941751}
-  - {fileID: 1294642387}
   - {fileID: 613681837}
   - {fileID: 880437526}
   - {fileID: 588078769}
