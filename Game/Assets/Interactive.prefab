@@ -12,8 +12,7 @@ GameObject:
   - component: {fileID: 7488829868806830832}
   - component: {fileID: 1830016044729583026}
   - component: {fileID: 2116965964224513906}
-  - component: {fileID: 4489562558953521650}
-  - component: {fileID: 3376679973667259577}
+  - component: {fileID: 4430985502717021315}
   m_Layer: 0
   m_Name: Interactive
   m_TagString: interactive
@@ -113,34 +112,7 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1, y: 1, z: 1}
   m_Center: {x: 0, y: 0, z: 0}
---- !u!54 &4489562558953521650
-Rigidbody:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3397079243177963101}
-  serializedVersion: 5
-  m_Mass: 10
-  m_LinearDamping: 0
-  m_AngularDamping: 0.05
-  m_CenterOfMass: {x: 0, y: 0, z: 0}
-  m_InertiaTensor: {x: 1, y: 1, z: 1}
-  m_InertiaRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ImplicitCom: 1
-  m_ImplicitTensor: 1
-  m_UseGravity: 1
-  m_IsKinematic: 0
-  m_Interpolate: 0
-  m_Constraints: 122
-  m_CollisionDetection: 0
---- !u!114 &3376679973667259577
+--- !u!114 &4430985502717021315
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -149,16 +121,49 @@ MonoBehaviour:
   m_GameObject: {fileID: 3397079243177963101}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1cfe494c5f2231541973f63217a25f2f, type: 3}
+  m_Script: {fileID: 11500000, guid: 4745b4e57f8040347b3bd82cd6e1f6ff, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::SimpleColorInteractable
-  targetRenderer: {fileID: 1830016044729583026}
-  colors:
-  - {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
+  m_EditorClassIdentifier: Assembly-CSharp::UnifiedInteractable
+  interactionMode: 1
+  triggerActivation: 0
+  activatorTag: Player
+  requireStandingOnTop: 0
+  standingCheckDistance: 0.5
+  activationType: 1
+  requiredStayTime: 0
+  cooldownTime: 1
+  deactivateOnExit: 1
+  feedbackType: 2
+  targetRenderer: {fileID: 0}
+  inactiveColor: {r: 0.5, g: 0.5, b: 0.5, a: 1}
+  activeColor: {r: 0, g: 1, b: 0, a: 1}
+  colorCycle:
   - {r: 1, g: 0, b: 0, a: 1}
+  - {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
   - {r: 0, g: 1, b: 0, a: 1}
+  - {r: 0, g: 0, b: 1, a: 1}
   loopColors: 1
-  revertToOriginalOnDisable: 1
-  onInteract:
+  inactiveMaterial: {fileID: 0}
+  activeMaterial: {fileID: 0}
+  pressurePad: {fileID: 0}
+  pressDepth: 0.1
+  pressSpeed: 5
+  highlightMaterial: {fileID: 0}
+  useHighlight: 0
+  activationSound: {fileID: 0}
+  deactivationSound: {fileID: 0}
+  audioSource: {fileID: 0}
+  notifyTutorialManager: 0
+  tutorialManager: {fileID: 0}
+  disableAfterActivation: 0
+  revertOnDisable: 1
+  onActivate:
     m_PersistentCalls:
       m_Calls: []
+  onDeactivate:
+    m_PersistentCalls:
+      m_Calls: []
+  onStayInside:
+    m_PersistentCalls:
+      m_Calls: []
+  showDebugLogs: 0

@@ -128,7 +128,7 @@ GameObject:
   - component: {fileID: 9061739157653566553}
   m_Layer: 0
   m_Name: Capsule
-  m_TagString: Untagged
+  m_TagString: Player
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -244,7 +244,10 @@ MonoBehaviour:
   walkSpeed: 4
   sprintSpeed: 8
   acceleration: 10
-  jumpHeight: 1.9
+  jumpForce: 7
+  playerMass: 1
+  lowJumpMultiplier: 2.5
+  fallMultiplier: 2
   gravity: 20
   groundedGravity: -5
   cameraTransform: {fileID: 0}

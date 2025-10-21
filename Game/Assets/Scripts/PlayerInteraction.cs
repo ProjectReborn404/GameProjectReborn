@@ -35,6 +35,12 @@ public class PlayerInteraction : MonoBehaviour
     public bool drawRayInEditor = true;
     public Color rayColor = Color.green;
 
+    [Header("Raycast Pressure Plate (vertical)")]
+    public bool enablePressureRaycast = true;
+    public float pressureRaycastDistance = 2f;
+    public Vector3 pressureRaycastOffset = new Vector3(0, 0.5f, 0);
+    public Color pressureRayColor = Color.yellow;
+
     [Header("Debug (solo dibujado, sin logs repetitivos)")]
     public bool showExtraDebug = false; // por si quieres activar futuras ayudas
 
@@ -65,6 +71,8 @@ public class PlayerInteraction : MonoBehaviour
     void Update()
     {
         DetectInteractiveObject();
+        if (enablePressureRaycast)
+            DetectPressurePlateRaycast();
 
         // Solo un log cuando cambia el estado de detection (null <-> objeto)
         if (currentDetected != previousDetected)
@@ -81,41 +89,41 @@ public class PlayerInteraction : MonoBehaviour
         {
             if (currentDetected != null)
             {
-                Debug.Log($"Interacción con {currentDetected.name}");
+                // Antes de interactuar, validar modo de interacción según el tipo de objeto
+                var ui = currentDetected.GetComponentInParent<UnifiedInteractable>();
+                if (ui != null)
+                {
+                    // Manual raycast solo interactúa con Manual o Hybrid
+                    if (ui.interactionMode == UnifiedInteractable.InteractionMode.Manual ||
+                        ui.interactionMode == UnifiedInteractable.InteractionMode.Hybrid)
+                    {
+                        try { ui.Interact(this.gameObject); } catch (Exception e) { Debug.LogError($"Error en UnifiedInteractable.Interact: {e}"); }
+                    }
+                    // Si está en PressurePlate, ignorar la interacción manual
+                    return;
+                }
 
-                // 1) Intentar IInteractable (preferido)
+                // Evitar activar PressurePlate con interacción manual
+                var plate = currentDetected.GetComponentInParent<PressurePlate>();
+                if (plate != null)
+                {
+                    return;
+                }
+
+                // 1) Intentar IInteractable (otros casos manuales)
                 var inter = currentDetected.GetComponent<IInteractable>();
                 if (inter != null)
                 {
-                    try
-                    {
-                        inter.Interact(this.gameObject);
-                    }
-                    catch (Exception e)
-                    {
-                        Debug.LogError($"Error al ejecutar Interact en {currentDetected.name}: {e}");
-                    }
+                    try { inter.Interact(this.gameObject); } catch (Exception e) { Debug.LogError($"Error al ejecutar Interact en {currentDetected.name}: {e}"); }
+                    return;
                 }
-                else
+
+                // 2) Fallback: SimpleColorInteractable si existe (interacción visual simple)
+                var sc = currentDetected.GetComponent<SimpleColorInteractable>();
+                if (sc != null)
                 {
-                    // 2) Fallback: SimpleColorInteractable si existe (interacción visual simple)
-                    var sc = currentDetected.GetComponent<SimpleColorInteractable>();
-                    if (sc != null)
-                    {
-                        try
-                        {
-                            sc.Interact(this.gameObject);
-                        }
-                        catch (Exception e)
-                        {
-                            Debug.LogError($"Error al ejecutar SimpleColorInteractable.Interact en {currentDetected.name}: {e}");
-                        }
-                    }
-                    else
-                    {
-                        // 3) Ninguna implementación encontrada: aviso (puedes quitar esto si lo deseas)
-                        Debug.Log($"El objeto '{currentDetected.name}' no implementa IInteractable ni SimpleColorInteractable.");
-                    }
+                    try { sc.Interact(this.gameObject); } catch (Exception e) { Debug.LogError($"Error al ejecutar SimpleColorInteractable.Interact en {currentDetected.name}: {e}"); }
+                    return;
                 }
             }
             // si no hay objeto detectado, no imprimimos nada (evita spam)
@@ -192,6 +200,50 @@ public class PlayerInteraction : MonoBehaviour
         }
     }
 
+    void DetectPressurePlateRaycast()
+    {
+        Transform refT = GetReferenceTransform();
+        Vector3 origin = (refT != null ? refT.position : transform.position) + pressureRaycastOffset;
+        Vector3 direction = Vector3.down;
+        float distance = pressureRaycastDistance;
+
+        Ray ray = new Ray(origin, direction);
+        RaycastHit hit;
+
+        if (drawRayInPlay && Application.isPlaying)
+            Debug.DrawRay(origin, direction * distance, pressureRayColor);
+
+        if (Physics.Raycast(ray, out hit, distance, interactLayerMask, QueryTriggerInteraction.Collide))
+        {
+            GameObject go = hit.collider?.gameObject;
+            if (go == null) return;
+
+            // Buscar componentes en el objeto impactado o sus padres (muchas placas usan colliders hijos)
+            var ui = go.GetComponentInParent<UnifiedInteractable>();
+            if (ui != null && ui.interactionMode == UnifiedInteractable.InteractionMode.PressurePlate)
+            {
+                if (!ui.IsActive())
+                {
+                    ui.ForceActivate();
+                }
+                return;
+            }
+
+            var plate = go.GetComponentInParent<PressurePlate>();
+            if (plate != null)
+            {
+                if (!plate.IsPressed())
+                {
+                    plate.Interact(this.gameObject);
+                }
+                return;
+            }
+
+            // Solo Pressure: no hacer fallback genérico aquí
+            // Si no encontramos nada relacionado a Pressure, no hacemos nada
+        }
+    } // --- FIN DetectPressurePlateRaycast ---
+
     bool IsInteractPressedThisFrame()
     {
         bool pressed = false;
@@ -208,43 +260,59 @@ public class PlayerInteraction : MonoBehaviour
                 if (Enum.TryParse<UnityEngine.InputSystem.Key>(interactKey.ToString(), out var parsedKey))
                 {
                     var control = Keyboard.current[parsedKey];
-                    if (control != null) pressed = control.wasPressedThisFrame;
+                    if (control != null)
+                        pressed = control.wasPressedThisFrame;
                 }
             }
         }
-#endif
-
-        if (!pressed && legacyInputAvailable)
+#else
+        // Input legacy (Unity antes de 2019.1)
+        if (legacyInputAvailable)
         {
-            pressed = Input.GetKeyDown(interactKey);
+            if (interactKey == KeyCode.E) pressed = Input.GetKeyDown(KeyCode.E);
+            else if (interactKey == KeyCode.Space) pressed = Input.GetKeyDown(KeyCode.Space);
+            else if (interactKey == KeyCode.F) pressed = Input.GetKeyDown(KeyCode.F);
+            else if (interactKey == KeyCode.Mouse0) pressed = Input.GetMouseButtonDown(0);
         }
+#endif
 
         return pressed;
     }
 
-    void OnDrawGizmos()
+    private void OnDrawGizmos()
     {
-        if (!drawRayInEditor) return;
-
-        Transform refT = GetReferenceTransform();
-        Vector3 origin;
-        Vector3 direction;
-
-        if (refT != null)
+        if (drawRayInEditor)
         {
-            origin = refT.TransformPoint(originOffset);
-            direction = refT.forward;
-            direction = Quaternion.Euler(directionEulerOffset) * direction;
-        }
-        else
-        {
-            origin = transform.TransformPoint(originOffset + Vector3.up * 1.5f);
-            direction = transform.forward;
-            direction = Quaternion.Euler(directionEulerOffset) * direction;
-        }
+            Transform refT = GetReferenceTransform();
 
-        Gizmos.color = rayColor;
-        Gizmos.DrawLine(origin, origin + direction * interactDistance);
-        Gizmos.DrawSphere(origin + direction * 0.05f, interactDistance * 0.01f);
+            Vector3 origin;
+            Vector3 direction;
+
+            if (refT != null)
+            {
+                origin = refT.TransformPoint(originOffset);
+                direction = refT.forward;
+                direction = Quaternion.Euler(directionEulerOffset) * direction;
+            }
+            else
+            {
+                origin = transform.TransformPoint(originOffset + Vector3.up * 1.5f);
+                direction = transform.forward;
+                direction = Quaternion.Euler(directionEulerOffset) * direction;
+            }
+
+            Gizmos.color = rayColor;
+            Gizmos.DrawLine(origin, origin + direction * interactDistance);
+
+            if (enablePressureRaycast)
+            {
+                Vector3 pressureOrigin = (refT != null ? refT.position : transform.position) + pressureRaycastOffset;
+                Vector3 pressureDirection = Vector3.down;
+                float pressureDistance = pressureRaycastDistance;
+
+                Gizmos.color = pressureRayColor;
+                Gizmos.DrawLine(pressureOrigin, pressureOrigin + pressureDirection * pressureDistance);
+            }
+        }
     }
 }
